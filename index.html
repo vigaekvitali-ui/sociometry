@@ -68,17 +68,14 @@
   </form>
 
   <script>
-    // URL твоего скрипта (как уже стоит у тебя)
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYZy2DovCM_-jRqm6gMICVWHDvWp9iMw-OumJF_8JX2XX0C32S77--XY5gIrbTBcJOEg/exec";
 
-    // Значение по умолчанию, если конфиг не загрузится
-    let REQUIRED_CHOICES = 3;
+    let REQUIRED_CHOICES = 3; // по умолчанию, если Settings не загрузится
 
     const form = document.getElementById('sociometryForm');
     const statusDiv = document.getElementById('status');
     const noteText = document.getElementById('noteText');
 
-    // Загружаем настройки (RequiredAnswers) из скрипта
     async function loadConfig() {
       try {
         const res = await fetch(SCRIPT_URL + "?mode=config");
@@ -87,7 +84,7 @@
           REQUIRED_CHOICES = Number(data.requiredChoices);
         }
       } catch (e) {
-        // если не получилось — остаётся значение по умолчанию
+        // если не загрузилось — остаётся значение по умолчанию
       }
       noteText.textContent =
         `Выберите группу, введите своё имя и укажите до 6 человек, с кем вы хотели бы работать. ` +
@@ -103,20 +100,41 @@
 
       const formData = new FormData(form);
 
-      const choices = [
-        formData.get('choice1')?.trim(),
-        formData.get('choice2')?.trim(),
-        formData.get('choice3')?.trim(),
-        formData.get('choice4')?.trim(),
-        formData.get('choice5')?.trim(),
-        formData.get('choice6')?.trim()
+      const studentName = (formData.get('studentName') || '').trim().toLowerCase();
+
+      const choicesRaw = [
+        formData.get('choice1'),
+        formData.get('choice2'),
+        formData.get('choice3'),
+        formData.get('choice4'),
+        formData.get('choice5'),
+        formData.get('choice6')
       ];
 
-      const filledChoices = choices.filter(c => c && c.length > 0).length;
+      const choices = choicesRaw.map(c => (c || '').trim()).filter(c => c.length > 0);
+      const filledChoices = choices.length;
 
+      // 1) проверка на минимум N выборов
       if (filledChoices < REQUIRED_CHOICES) {
         statusDiv.textContent =
           `Нужно указать минимум ${REQUIRED_CHOICES} человек(а). Сейчас указано: ${filledChoices}.`;
+        statusDiv.className = 'error';
+        return;
+      }
+
+      // 2) запрет выбирать самого себя
+      const selfChosen = choices.some(c => c.toLowerCase() === studentName && studentName.length > 0);
+      if (selfChosen) {
+        statusDiv.textContent = 'Нельзя выбирать самого себя в качестве выбора.';
+        statusDiv.className = 'error';
+        return;
+      }
+
+      // 3) запрет дублирующих выборов
+      const lowerChoices = choices.map(c => c.toLowerCase());
+      const uniqueCount = new Set(lowerChoices).size;
+      if (uniqueCount !== lowerChoices.length) {
+        statusDiv.textContent = 'Нельзя выбирать одного и того же человека несколько раз.';
         statusDiv.className = 'error';
         return;
       }
