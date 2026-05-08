@@ -17,7 +17,9 @@
 </head>
 <body>
   <h1>Социометрия группы</h1>
-  <p class="note">Выберите группу, введите своё имя и укажите 6 человек, с кем вы хотели бы работать.</p>
+  <p class="note" id="noteText">
+    Выберите группу, введите своё имя и укажите до 6 человек, с кем вы хотели бы работать.
+  </p>
 
   <form id="sociometryForm">
     <label>Группа
@@ -34,27 +36,27 @@
     </label>
 
     <label>1-й выбор (ФИО)
-      <input type="text" name="choice1" required>
+      <input type="text" name="choice1">
     </label>
 
     <label>2-й выбор (ФИО)
-      <input type="text" name="choice2" required>
+      <input type="text" name="choice2">
     </label>
 
     <label>3-й выбор (ФИО)
-      <input type="text" name="choice3" required>
+      <input type="text" name="choice3">
     </label>
 
     <label>4-й выбор (ФИО)
-      <input type="text" name="choice4" required>
+      <input type="text" name="choice4">
     </label>
 
     <label>5-й выбор (ФИО)
-      <input type="text" name="choice5" required>
+      <input type="text" name="choice5">
     </label>
 
     <label>6-й выбор (ФИО)
-      <input type="text" name="choice6" required>
+      <input type="text" name="choice6">
     </label>
 
     <label>Комментарий (необязательно)
@@ -66,10 +68,33 @@
   </form>
 
   <script>
+    // URL твоего скрипта (как уже стоит у тебя)
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYZy2DovCM_-jRqm6gMICVWHDvWp9iMw-OumJF_8JX2XX0C32S77--XY5gIrbTBcJOEg/exec";
+
+    // Значение по умолчанию, если конфиг не загрузится
+    let REQUIRED_CHOICES = 3;
 
     const form = document.getElementById('sociometryForm');
     const statusDiv = document.getElementById('status');
+    const noteText = document.getElementById('noteText');
+
+    // Загружаем настройки (RequiredAnswers) из скрипта
+    async function loadConfig() {
+      try {
+        const res = await fetch(SCRIPT_URL + "?mode=config");
+        const data = await res.json();
+        if (data && data.requiredChoices) {
+          REQUIRED_CHOICES = Number(data.requiredChoices);
+        }
+      } catch (e) {
+        // если не получилось — остаётся значение по умолчанию
+      }
+      noteText.textContent =
+        `Выберите группу, введите своё имя и укажите до 6 человек, с кем вы хотели бы работать. ` +
+        `Минимум — ${REQUIRED_CHOICES} человек(а).`;
+    }
+
+    loadConfig();
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -77,7 +102,27 @@
       statusDiv.className = '';
 
       const formData = new FormData(form);
+
+      const choices = [
+        formData.get('choice1')?.trim(),
+        formData.get('choice2')?.trim(),
+        formData.get('choice3')?.trim(),
+        formData.get('choice4')?.trim(),
+        formData.get('choice5')?.trim(),
+        formData.get('choice6')?.trim()
+      ];
+
+      const filledChoices = choices.filter(c => c && c.length > 0).length;
+
+      if (filledChoices < REQUIRED_CHOICES) {
+        statusDiv.textContent =
+          `Нужно указать минимум ${REQUIRED_CHOICES} человек(а). Сейчас указано: ${filledChoices}.`;
+        statusDiv.className = 'error';
+        return;
+      }
+
       const payload = {
+        mode: "submit",
         group: formData.get('group'),
         studentName: formData.get('studentName'),
         choice1: formData.get('choice1'),
