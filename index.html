@@ -68,106 +68,90 @@
   </form>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYZy2DovCM_-jRqm6gMICVWHDvWp9iMw-OumJF_8JX2XX0C32S77--XY5gIrbTBcJOEg/exec";
+   form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  statusDiv.textContent = '';
+  statusDiv.className = '';
 
-    let REQUIRED_CHOICES = 3; // по умолчанию, если Settings не загрузится
+  const formData = new FormData(form);
 
-    const form = document.getElementById('sociometryForm');
-    const statusDiv = document.getElementById('status');
-    const noteText = document.getElementById('noteText');
+  // ФИО студента — приводим к нижнему регистру и убираем лишние пробелы
+  const studentName = (formData.get('studentName') || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
 
-    async function loadConfig() {
-      try {
-        const res = await fetch(SCRIPT_URL + "?mode=config");
-        const data = await res.json();
-        if (data && data.requiredChoices) {
-          REQUIRED_CHOICES = Number(data.requiredChoices);
-        }
-      } catch (e) {
-        // если не загрузилось — остаётся значение по умолчанию
-      }
-      noteText.textContent =
-        `Выберите группу, введите своё имя и укажите до 6 человек, с кем вы хотели бы работать. ` +
-        `Минимум — ${REQUIRED_CHOICES} человек(а).`;
-    }
+  // Сырые значения выборов
+  const rawChoices = [
+    formData.get('choice1'),
+    formData.get('choice2'),
+    formData.get('choice3'),
+    formData.get('choice4'),
+    formData.get('choice5'),
+    formData.get('choice6')
+  ];
 
-    loadConfig();
+  // Приводим каждый выбор к нормальному виду
+  const choices = rawChoices
+    .map(c => (c || '').trim().toLowerCase().replace(/\s+/g, ' '))
+    .filter(c => c.length > 0);
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      statusDiv.textContent = '';
-      statusDiv.className = '';
+  const filledChoices = choices.length;
 
-      const formData = new FormData(form);
+  // 1) Проверка на минимум N выборов
+  if (filledChoices < REQUIRED_CHOICES) {
+    statusDiv.textContent =
+      `Нужно указать минимум ${REQUIRED_CHOICES} человек(а). Сейчас указано: ${filledChoices}.`;
+    statusDiv.className = 'error';
+    return;
+  }
 
-      const studentName = (formData.get('studentName') || '').trim().toLowerCase();
+  // 2) Запрет выбирать самого себя
+  if (choices.includes(studentName)) {
+    statusDiv.textContent = 'Нельзя выбирать самого себя.';
+    statusDiv.className = 'error';
+    return;
+  }
 
-      const choicesRaw = [
-        formData.get('choice1'),
-        formData.get('choice2'),
-        formData.get('choice3'),
-        formData.get('choice4'),
-        formData.get('choice5'),
-        formData.get('choice6')
-      ];
+  // 3) Запрет дублирующих выборов
+  const unique = new Set(choices);
+  if (unique.size !== choices.length) {
+    statusDiv.textContent = 'Нельзя выбирать одного и того же человека несколько раз.';
+    statusDiv.className = 'error';
+    return;
+  }
 
-      const choices = choicesRaw.map(c => (c || '').trim()).filter(c => c.length > 0);
-      const filledChoices = choices.length;
+  // Если всё ок — отправляем
+  const payload = {
+    mode: "submit",
+    group: formData.get('group'),
+    studentName: formData.get('studentName'),
+    choice1: formData.get('choice1'),
+    choice2: formData.get('choice2'),
+    choice3: formData.get('choice3'),
+    choice4: formData.get('choice4'),
+    choice5: formData.get('choice5'),
+    choice6: formData.get('choice6'),
+    comment: formData.get('comment')
+  };
 
-      // 1) проверка на минимум N выборов
-      if (filledChoices < REQUIRED_CHOICES) {
-        statusDiv.textContent =
-          `Нужно указать минимум ${REQUIRED_CHOICES} человек(а). Сейчас указано: ${filledChoices}.`;
-        statusDiv.className = 'error';
-        return;
-      }
-
-      // 2) запрет выбирать самого себя
-      const selfChosen = choices.some(c => c.toLowerCase() === studentName && studentName.length > 0);
-      if (selfChosen) {
-        statusDiv.textContent = 'Нельзя выбирать самого себя в качестве выбора.';
-        statusDiv.className = 'error';
-        return;
-      }
-
-      // 3) запрет дублирующих выборов
-      const lowerChoices = choices.map(c => c.toLowerCase());
-      const uniqueCount = new Set(lowerChoices).size;
-      if (uniqueCount !== lowerChoices.length) {
-        statusDiv.textContent = 'Нельзя выбирать одного и того же человека несколько раз.';
-        statusDiv.className = 'error';
-        return;
-      }
-
-      const payload = {
-        mode: "submit",
-        group: formData.get('group'),
-        studentName: formData.get('studentName'),
-        choice1: formData.get('choice1'),
-        choice2: formData.get('choice2'),
-        choice3: formData.get('choice3'),
-        choice4: formData.get('choice4'),
-        choice5: formData.get('choice5'),
-        choice6: formData.get('choice6'),
-        comment: formData.get('comment')
-      };
-
-      try {
-        await fetch(SCRIPT_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        statusDiv.textContent = 'Ответ сохранён. Спасибо.';
-        statusDiv.className = 'success';
-        form.reset();
-      } catch (err) {
-        statusDiv.textContent = 'Ошибка отправки. Попробуйте ещё раз.';
-        statusDiv.className = 'error';
-      }
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
+
+    statusDiv.textContent = 'Ответ сохранён. Спасибо.';
+    statusDiv.className = 'success';
+    form.reset();
+  } catch (err) {
+    statusDiv.textContent = 'Ошибка отправки. Попробуйте ещё раз.';
+    statusDiv.className = 'error';
+  }
+});
+
   </script>
 </body>
 </html>
