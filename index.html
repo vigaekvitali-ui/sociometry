@@ -1,157 +1,74 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Социометрия группы</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 16px; }
-    h1 { font-size: 20px; margin-bottom: 8px; }
-    label { display: block; margin-top: 12px; font-weight: 600; }
-    input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; margin-top: 4px; }
-    button { margin-top: 16px; padding: 10px 16px; font-size: 16px; }
-    .note { font-size: 12px; color: #666; margin-top: 8px; }
-    .success { color: green; margin-top: 12px; }
-    .error { color: red; margin-top: 12px; }
-  </style>
+<meta charset="UTF-8">
+<title>Вход преподавателя</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+  font-family: Arial, sans-serif;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+.card {
+  background: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+button:hover {
+  background: #45a049;
+}
+#error {
+  color: red;
+  margin-top: 10px;
+}
+</style>
 </head>
 <body>
-  <h1>Социометрия группы</h1>
-  <p class="note" id="noteText">
-    Выберите группу, введите своё имя и укажите до 6 человек, с кем вы хотели бы работать.
-  </p>
 
-  <form id="sociometryForm">
-    <label>Группа
-      <select name="group" required>
-        <option value="">Выберите группу</option>
-        <option value="Э-21">Э-21</option>
-        <option value="Э-22">Э-22</option>
-        <option value="М-31">М-31</option>
-      </select>
-    </label>
+<div class="card">
+  <h2>Вход преподавателя</h2>
 
-    <label>Ваше ФИО
-      <input type="text" name="studentName" required>
-    </label>
+  <input type="password" id="pass" placeholder="Введите пароль">
+  <button onclick="login()">Войти</button>
 
-    <label>1-й выбор (ФИО)
-      <input type="text" name="choice1">
-    </label>
+  <div id="error"></div>
+</div>
 
-    <label>2-й выбор (ФИО)
-      <input type="text" name="choice2">
-    </label>
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw84WL4OsVr88fWoJ8QPenaLkaug4bDwwAjfwc3_FOKk1KuhHcQeL2zZhzOKR6N36ww/exec";
 
-    <label>3-й выбор (ФИО)
-      <input type="text" name="choice3">
-    </label>
+async function login() {
+  const pass = document.getElementById("pass").value.trim();
+  const err = document.getElementById("error");
+  err.textContent = "";
 
-    <label>4-й выбор (ФИО)
-      <input type="text" name="choice4">
-    </label>
+  const res = await fetch(SCRIPT_URL + "?mode=checkPassword&pass=" + encodeURIComponent(pass));
+  const data = await res.json();
 
-    <label>5-й выбор (ФИО)
-      <input type="text" name="choice5">
-    </label>
-
-    <label>6-й выбор (ФИО)
-      <input type="text" name="choice6">
-    </label>
-
-    <label>Комментарий (необязательно)
-      <textarea name="comment" rows="3"></textarea>
-    </label>
-
-    <button type="submit">Отправить</button>
-    <div id="status"></div>
-  </form>
-
-  <script>
-   form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  statusDiv.textContent = '';
-  statusDiv.className = '';
-
-  const formData = new FormData(form);
-
-  // ФИО студента — приводим к нижнему регистру и убираем лишние пробелы
-  const studentName = (formData.get('studentName') || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-
-  // Сырые значения выборов
-  const rawChoices = [
-    formData.get('choice1'),
-    formData.get('choice2'),
-    formData.get('choice3'),
-    formData.get('choice4'),
-    formData.get('choice5'),
-    formData.get('choice6')
-  ];
-
-  // Приводим каждый выбор к нормальному виду
-  const choices = rawChoices
-    .map(c => (c || '').trim().toLowerCase().replace(/\s+/g, ' '))
-    .filter(c => c.length > 0);
-
-  const filledChoices = choices.length;
-
-  // 1) Проверка на минимум N выборов
-  if (filledChoices < REQUIRED_CHOICES) {
-    statusDiv.textContent =
-      `Нужно указать минимум ${REQUIRED_CHOICES} человек(а). Сейчас указано: ${filledChoices}.`;
-    statusDiv.className = 'error';
-    return;
+  if (data.ok) {
+    window.location.href = "admin.html";
+  } else {
+    err.textContent = "Неверный пароль";
   }
+}
+</script>
 
-  // 2) Запрет выбирать самого себя
-  if (choices.includes(studentName)) {
-    statusDiv.textContent = 'Нельзя выбирать самого себя.';
-    statusDiv.className = 'error';
-    return;
-  }
-
-  // 3) Запрет дублирующих выборов
-  const unique = new Set(choices);
-  if (unique.size !== choices.length) {
-    statusDiv.textContent = 'Нельзя выбирать одного и того же человека несколько раз.';
-    statusDiv.className = 'error';
-    return;
-  }
-
-  // Если всё ок — отправляем
-  const payload = {
-    mode: "submit",
-    group: formData.get('group'),
-    studentName: formData.get('studentName'),
-    choice1: formData.get('choice1'),
-    choice2: formData.get('choice2'),
-    choice3: formData.get('choice3'),
-    choice4: formData.get('choice4'),
-    choice5: formData.get('choice5'),
-    choice6: formData.get('choice6'),
-    comment: formData.get('comment')
-  };
-
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    statusDiv.textContent = 'Ответ сохранён. Спасибо.';
-    statusDiv.className = 'success';
-    form.reset();
-  } catch (err) {
-    statusDiv.textContent = 'Ошибка отправки. Попробуйте ещё раз.';
-    statusDiv.className = 'error';
-  }
-});
-
-  </script>
 </body>
 </html>
