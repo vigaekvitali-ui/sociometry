@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Настройки социометрии</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #f5f5f5;
+}
+
+/* Material Design карточки */
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+
+/* Заголовки */
+h2 {
+  margin-top: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+/* Поля ввода */
+input, textarea, select {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+/* Кнопки */
+button {
+  padding: 12px 20px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: #4CAF50;
+  color: white;
+  margin-top: 15px;
+}
+button:hover {
+  background: #43a047;
+}
+
+/* Слайдер */
+.styled-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #4CAF50 0%, #4CAF50 var(--percent), #ddd var(--percent), #ddd 100%);
+  outline: none;
+  transition: background 0.3s;
+  margin-top: 10px;
+}
+
+.styled-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  transition: 0.2s;
+}
+
+.styled-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Карточки вопросов */
+.question-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 15px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.question-card h3 {
+  margin-top: 0;
+}
+</style>
+</head>
+<body>
+
+<h1>Настройки социометрии</h1>
+
+<!-- Блок пароля -->
+<div class="card">
+  <h2>Пароль преподавателя</h2>
+  <input type="password" id="oldPass" placeholder="Текущий пароль">
+  <input type="password" id="newPass" placeholder="Новый пароль (необязательно)">
+  <button onclick="savePassword()">Сохранить пароль</button>
+  <div id="passStatus"></div>
+</div>
+
+<!-- Блок группы -->
+<div class="card">
+  <h2>Группа и список студентов</h2>
+  <input type="text" id="groupName" placeholder="Номер группы">
+  <textarea id="students" rows="6" placeholder="Фамилии студентов, по одной в строке"></textarea>
+</div>
+
+<!-- Блок вопросов -->
+<div class="card">
+  <h2>Вопросы</h2>
+
+  <label>Количество вопросов (1–6):</label>
+  <input type="number" id="questionCount" min="1" max="6" value="3">
+
+  <label style="margin-top:20px;">Количество ответов на каждый вопрос: 
+    <span id="answersCount">3</span>
+  </label>
+  <input type="range" min="1" max="6" value="3" id="answersSlider" class="styled-slider">
+  <div class="slider-labels"><span>1</span><span>6</span></div>
+
+  <div id="questionsContainer"></div>
+</div>
+
+<!-- Сохранение -->
+<div class="card">
+  <button onclick="saveSettings()">Сохранить настройки</button>
+  <div id="saveStatus"></div>
+</div>
+
+<!-- QR-код -->
+<div class="card">
+  <h2>QR-код для студентов</h2>
+  <button onclick="generateQR()">Сгенерировать QR-код</button>
+  <div id="qr"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+<script>
+const SCRIPT_URL = "YOUR_SCRIPT_URL_HERE";
+
+/* Слайдер */
+const slider = document.getElementById("answersSlider");
+const count = document.getElementById("answersCount");
+
+function updateSlider() {
+  const val = slider.value;
+  count.textContent = val;
+  const percent = (val - 1) / 5 * 100;
+  slider.style.setProperty("--percent", percent + "%");
+}
+slider.addEventListener("input", updateSlider);
+updateSlider();
+
+/* Генерация карточек вопросов */
+function renderQuestions() {
+  const container = document.getElementById("questionsContainer");
+  container.innerHTML = "";
+  const count = Number(document.getElementById("questionCount").value);
+
+  for (let i = 1; i <= 6; i++) {
+    const card = document.createElement("div");
+    card.className = "question-card";
+    card.style.display = i <= count ? "block" : "none";
+
+    card.innerHTML = `
+      <h3>Вопрос ${i}</h3>
+      <textarea id="q${i}" placeholder="Текст вопроса"></textarea>
+      <label><input type="checkbox" id="a${i}"> Активен</label>
+    `;
+
+    container.appendChild(card);
+  }
+}
+document.getElementById("questionCount").addEventListener("input", renderQuestions);
+renderQuestions();
+
+/* Сохранение настроек */
+async function saveSettings() {
+  const data = {
+    mode: "saveSettings",
+    group: document.getElementById("groupName").value,
+    students: document.getElementById("students").value,
+    questionCount: document.getElementById("questionCount").value,
+    answersPerQuestion: slider.value,
+    questions: [],
+    active: []
+  };
+
+  for (let i = 1; i <= 6; i++) {
+    data.questions.push(document.getElementById("q" + i).value);
+    data.active.push(document.getElementById("a" + i).checked);
+  }
+
+  const res = await fetch(SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify(data)
+  });
+
+  document.getElementById("saveStatus").textContent = "Сохранено!";
+}
+
+/* Сохранение пароля */
+async function savePassword() {
+  const oldPass = document.getElementById("oldPass").value;
+  const newPass = document.getElementById("newPass").value;
+
+  const res = await fetch(SCRIPT_URL + "?mode=changePassword&old=" + oldPass + "&new=" + newPass);
+  const data = await res.json();
+
+  document.getElementById("passStatus").textContent = data.msg;
+}
+
+/* QR-код */
+function generateQR() {
+  const group = document.getElementById("groupName").value;
+  const url = window.location.origin + "/form.html?group=" + encodeURIComponent(group);
+
+  const qr = new QRious({
+    element: document.createElement("canvas"),
+    value: url,
+    size: 250
+  });
+
+  const div = document.getElementById("qr");
+  div.innerHTML = "";
+  div.appendChild(qr.element);
+}
+</script>
+
+</body>
+</html>
