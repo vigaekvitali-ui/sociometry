@@ -14,7 +14,6 @@ body {
   background: #f5f5f5;
 }
 
-/* Material Design карточки */
 .card {
   background: #fff;
   border-radius: 14px;
@@ -23,14 +22,12 @@ body {
   box-shadow: 0 4px 14px rgba(0,0,0,0.12);
 }
 
-/* Заголовки */
 h2 {
   margin-top: 0;
   font-size: 22px;
   font-weight: 600;
 }
 
-/* Поля ввода */
 input, textarea, select {
   width: 100%;
   padding: 12px;
@@ -41,7 +38,6 @@ input, textarea, select {
   box-sizing: border-box;
 }
 
-/* Кнопки */
 button {
   padding: 12px 20px;
   font-size: 16px;
@@ -56,7 +52,6 @@ button:hover {
   background: #43a047;
 }
 
-/* Слайдер */
 .styled-slider {
   -webkit-appearance: none;
   width: 100%;
@@ -90,7 +85,6 @@ button:hover {
   margin-top: 4px;
 }
 
-/* Карточки вопросов */
 .question-card {
   background: #fff;
   border-radius: 12px;
@@ -108,7 +102,6 @@ button:hover {
 
 <h1>Настройки социометрии</h1>
 
-<!-- Блок пароля -->
 <div class="card">
   <h2>Пароль преподавателя</h2>
   <input type="password" id="oldPass" placeholder="Текущий пароль">
@@ -117,14 +110,12 @@ button:hover {
   <div id="passStatus"></div>
 </div>
 
-<!-- Блок группы -->
 <div class="card">
   <h2>Группа и список студентов</h2>
   <input type="text" id="groupName" placeholder="Номер группы">
   <textarea id="students" rows="6" placeholder="Фамилии студентов, по одной в строке"></textarea>
 </div>
 
-<!-- Блок вопросов -->
 <div class="card">
   <h2>Вопросы</h2>
 
@@ -140,13 +131,11 @@ button:hover {
   <div id="questionsContainer"></div>
 </div>
 
-<!-- Сохранение -->
 <div class="card">
   <button onclick="saveSettings()">Сохранить настройки</button>
   <div id="saveStatus"></div>
 </div>
 
-<!-- QR-код -->
 <div class="card">
   <h2>QR-код для студентов</h2>
   <button onclick="generateQR()">Сгенерировать QR-код</button>
@@ -156,9 +145,8 @@ button:hover {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
 <script>
-const SCRIPT_URL = "YOUR_SCRIPT_URL_HERE";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw84WL4OsVr88fWoJ8QPenaLkaug4bDwwAjfwc3_FOKk1KuhHcQeL2zZhzOKR6N36ww/exec";
 
-/* Слайдер */
 const slider = document.getElementById("answersSlider");
 const count = document.getElementById("answersCount");
 
@@ -171,7 +159,6 @@ function updateSlider() {
 slider.addEventListener("input", updateSlider);
 updateSlider();
 
-/* Генерация карточек вопросов */
 function renderQuestions() {
   const container = document.getElementById("questionsContainer");
   container.innerHTML = "";
@@ -194,7 +181,6 @@ function renderQuestions() {
 document.getElementById("questionCount").addEventListener("input", renderQuestions);
 renderQuestions();
 
-/* Сохранение настроек */
 async function saveSettings() {
   const data = {
     mode: "saveSettings",
@@ -211,7 +197,7 @@ async function saveSettings() {
     data.active.push(document.getElementById("a" + i).checked);
   }
 
-  const res = await fetch(SCRIPT_URL, {
+  await fetch(SCRIPT_URL, {
     method: "POST",
     body: JSON.stringify(data)
   });
@@ -219,7 +205,6 @@ async function saveSettings() {
   document.getElementById("saveStatus").textContent = "Сохранено!";
 }
 
-/* Сохранение пароля */
 async function savePassword() {
   const oldPass = document.getElementById("oldPass").value;
   const newPass = document.getElementById("newPass").value;
@@ -230,7 +215,6 @@ async function savePassword() {
   document.getElementById("passStatus").textContent = data.msg;
 }
 
-/* QR-код */
 function generateQR() {
   const group = document.getElementById("groupName").value;
   const url = window.location.origin + "/form.html?group=" + encodeURIComponent(group);
