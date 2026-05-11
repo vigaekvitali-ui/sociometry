@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Социометрия — Форма</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #f5f5f5;
+}
+
+/* Material Design карточки */
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.question-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 15px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.question-card h3 {
+  margin-top: 0;
+}
+
+select, textarea, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+button:hover {
+  background: #43a047;
+}
+</style>
+</head>
+<body>
+
+<h1>Социометрия</h1>
+
+<div class="card">
+  <h2>Выберите себя</h2>
+  <select id="selfSelect"></select>
+</div>
+
+<div id="questionsArea"></div>
+
+<div class="card">
+  <h2>Комментарий (необязательно)</h2>
+  <textarea id="comment" rows="4"></textarea>
+</div>
+
+<div class="card">
+  <button onclick="submitForm()">Отправить</button>
+  <div id="status"></div>
+</div>
+
+<script>
+const SCRIPT_URL = "YOUR_SCRIPT_URL_HERE";
+
+let students = [];
+let questions = [];
+let active = [];
+let answersPerQuestion = 1;
+let questionCount = 1;
+
+/* Загружаем настройки */
+async function loadSettings() {
+  const group = new URLSearchParams(window.location.search).get("group");
+
+  const res = await fetch(SCRIPT_URL + "?mode=getSettings&group=" + encodeURIComponent(group));
+  const data = await res.json();
+
+  students = data.students;
+  questions = data.questions;
+  active = data.active;
+  answersPerQuestion = data.answersPerQuestion;
+  questionCount = data.questionCount;
+
+  fillSelfSelect();
+  renderQuestions();
+}
+
+/* Заполняем список студентов */
+function fillSelfSelect() {
+  const sel = document.getElementById("selfSelect");
+  sel.innerHTML = "<option value=''>Выберите...</option>";
+
+  students.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    sel.appendChild(opt);
+  });
+}
+
+/* Рендер вопросов */
+function renderQuestions() {
+  const area = document.getElementById("questionsArea");
+  area.innerHTML = "";
+
+  for (let i = 1; i <= questionCount; i++) {
+    if (!active[i-1]) continue;
+
+    const card = document.createElement("div");
+    card.className = "card question-card";
+
+    let html = `<h3>Вопрос ${i}</h3>
+                <p>${questions[i-1]}</p>`;
+
+    for (let a = 1; a <= answersPerQuestion; a++) {
+      html += `
+        <select class="answer" data-q="${i}">
+          <option value="">Выберите...</option>
+        </select>
+      `;
+    }
+
+    card.innerHTML = html;
+    area.appendChild(card);
+  }
+
+  updateAllDropdowns();
+}
+
+/* Обновление всех списков */
+function updateAllDropdowns() {
+  const self = document.getElementById("selfSelect").value;
+
+  const allSelects = document.querySelectorAll(".answer");
+
+  allSelects.forEach(sel => {
+    const q = sel.dataset.q;
+
+    const selectedInQuestion = Array.from(
+      document.querySelectorAll(`select[data-q='${q}']`)
+    ).map(s => s.value).filter(v => v !== "");
+
+    sel.innerHTML = "<option value=''>Выберите...</option>";
+
+    students.forEach(s => {
+      if (s === self) return;
+      if (selectedInQuestion.includes(s) && sel.value !== s) return;
+
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s;
+      sel.appendChild(opt);
+    });
+
+    if (sel.dataset.saved) sel.value = sel.dataset.saved;
+  });
+
+  allSelects.forEach(sel => {
+    sel.addEventListener("change", () => {
+      sel.dataset.saved = sel.value;
+      updateAllDropdowns();
+    });
+  });
+
+  document.getElementById("selfSelect").addEventListener("change", updateAllDropdowns);
+}
+
+/* Отправка формы */
+async function submitForm() {
+  const self = document.getElementById("selfSelect").value;
+  if (!self) {
+    document.getElementById("status").textContent = "Выберите себя!";
+    return;
+  }
+
+  const answers = [];
+  const selects = document.querySelectorAll(".answer");
+
+  selects.forEach(sel => answers.push(sel.value));
+
+  const comment = document.getElementById("comment").value;
+
+  const payload = {
+    mode: "submit",
+    student: self,
+    answers: answers,
+    comment: comment
+  };
+
+  const res = await fetch(SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+
+  document.getElementById("status").textContent = "Ответ отправлен!";
+}
+
+loadSettings();
+</script>
+
+</body>
+</html>
